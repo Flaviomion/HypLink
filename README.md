@@ -34,7 +34,7 @@ Where
 	settaFonts si means that the script define a default dimension of the Comments font,
 	dimFont is the dimension desired for the Comments Font.
 	
-Third: launch the script, it's look on .ini and read the eexcel files and create metadata to mantain the hyperlink found.
+Third: launch the script, it's look on .ini and read the excel files and create metadata to mantain the hyperlink found.
 
 When you have performed these steps in case of modification of the files, you can re-execute the script and it will restore the hyperlinks that may have broken.
 
