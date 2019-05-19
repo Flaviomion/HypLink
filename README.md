@@ -19,8 +19,9 @@ This are examples of metadata:
   
   
 Use of the script
-First you need to create or have the excel files with the hyperlink as you need.
-Second create a file hyplink.ini with this contents:
+
+First: you need to create or have the excel files with the hyperlink as you need.
+Second: create a file hyplink.ini with this contents:
 
 
 	cartella=\\server\dir
@@ -44,4 +45,8 @@ Where
 	
 	dimFont is the dimension desired for the Comments Font.
 	
-	
+Third: launch the script, it's look on .ini and read the eexcel files and create metadata to mantain the hyperlink found.
+
+When you have performed these steps you are ready to re-execute the script in case of modification of the files, the script will reposition the hyperlinks that may have broken.
+
+
