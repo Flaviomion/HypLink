@@ -6,23 +6,18 @@ To be able to reposition the damaged links by a displacement of cells the script
 This are examples of metadata:
 
   local
-  
   HyFlink#XL#Pos=PS=xx#PC=jj#PR=rr#Punt=S=xx#C=jj#R=rr#HyElink
   
   Remote TO
-  
   HyFlink#TO#Pos=PS=xx#PC=jj#PR=rr#cartella=C:\xxxxxx\yyyyy#file=LivelliAutonomia#S=xx#C=jj#R=rr#HyElink
   
   Remote FR
-  
   HyFlink#FR#Pos=PS=xx#PC=jj#PR=rr#cartella=C:\xxxxxx\yyyyy#file=LivelliAutonomia#S=xx#C=jj#R=rr#HyElink
-  
   
 Use of the script
 
 First: you need to create or have the excel files with the hyperlink as you need.
 Second: create a file hyplink.ini with this contents:
-
 
 	cartella=\\server\dir
 	file=fileName
@@ -31,22 +26,15 @@ Second: create a file hyplink.ini with this contents:
 	settaFont=si
 	dimFont=11
 
-Where	
-
+Where
 	cartella indicates the directory where the main excel file resides,
-
 	file indicates the first part of the excel name (or the complete name),
-	
 	rapporto indicates where the report will be write,
-	
 	debug si means the debug is ON no means debug OFF,
-	
 	settaFonts si means that the script define a default dimension of the Comments font,
-	
 	dimFont is the dimension desired for the Comments Font.
 	
 Third: launch the script, it's look on .ini and read the eexcel files and create metadata to mantain the hyperlink found.
 
-When you have performed these steps you are ready to re-execute the script in case of modification of the files, the script will reposition the hyperlinks that may have broken.
-
+When you have performed these steps in case of modification of the files, you can re-execute the script and it will restore the hyperlinks that may have broken.
 
