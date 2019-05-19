@@ -2,9 +2,10 @@ Option Explicit
 Const Versione = "1.4.0"
 'dal 1.3.0 in avanti ho rivoluzionato i Flink per tutti i link (non riuscivo senza le informazioni da dove veniva il link a ricostruire i link spostati)
 'ATTENZIONE questo succede quando uno spostamento va a posizionarsi proprio dove c'èra un altro hyperlink.
-'ora i link saranno del tipo locali		HyFlink#XL#Pos=PS=xx#PC=jj#PR=rr#Punt=S=xx#C=jj#R=rr#HyElink
-							'Remoti		HyFlink#TO#Pos=PS=xx#PC=jj#PR=rr#cartella=C:\xxxxxx\yyyyy#file=LivelliAutonomia#S=xx#C=jj#R=rr#HyElink
-							'Remoti		HyFlink#FR#Pos=PS=xx#PC=jj#PR=rr#cartella=C:\xxxxxx\yyyyy#file=LivelliAutonomia#S=xx#C=jj#R=rr#HyElink
+'ora i link saranno del tipo:
+	'locali		HyFlink#XL#Pos=PS=xx#PC=jj#PR=rr#Punt=S=xx#C=jj#R=rr#HyElink
+	'Remoti		HyFlink#TO#Pos=PS=xx#PC=jj#PR=rr#cartella=C:\xxxxxx\yyyyy#file=LivelliAutonomia#S=xx#C=jj#R=rr#HyElink
+	'Remoti		HyFlink#FR#Pos=PS=xx#PC=jj#PR=rr#cartella=C:\xxxxxx\yyyyy#file=LivelliAutonomia#S=xx#C=jj#R=rr#HyElink
 'Con la 1.4.0 sfrutto in nuovi Flink per gestire anche movimenti contemporanei del TO e FR.
 
 Const Name = "HypLink"
