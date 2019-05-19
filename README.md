@@ -21,9 +21,15 @@ settaFont=si
 dimFont=11
 
 Where	cartella indicates the directory where the main excel file resides,
-	file indicates the first part of the excel name (or the complete name)
-	rapporto indicates where the report will be write
-	debug si means the debug is ON no means debug OFF
-	settaFonts si means that the script define a default dimension of the Comments font
-	dimFont is the dimension desired for the Comments Font
+
+	file indicates the first part of the excel name (or the complete name),
+	
+	rapporto indicates where the report will be write,
+	
+	debug si means the debug is ON no means debug OFF,
+	
+	settaFonts si means that the script define a default dimension of the Comments font,
+	
+	dimFont is the dimension desired for the Comments Font.
+	
 	
