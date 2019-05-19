@@ -30,7 +30,9 @@ Second create a file hyplink.ini with this contents:
 	settaFont=si
 	dimFont=11
 
-Where	cartella indicates the directory where the main excel file resides,
+Where	
+
+	cartella indicates the directory where the main excel file resides,
 
 	file indicates the first part of the excel name (or the complete name),
 	
