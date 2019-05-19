@@ -13,12 +13,13 @@ Use of the script
 First you need to create or have the excel files with the hyperlink as you need.
 Second create a file hyplink.ini with this contents:
 
-cartella=\\server\dir
-file=fileName
-rapporto=\\server\reportDir\report.html
-debug=no
-settaFont=si
-dimFont=11
+
+	cartella=\\server\dir
+	file=fileName
+	rapporto=\\server\reportDir\report.html
+	debug=no
+	settaFont=si
+	dimFont=11
 
 Where	cartella indicates the directory where the main excel file resides,
 
