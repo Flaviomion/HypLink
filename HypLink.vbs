@@ -1,12 +1,22 @@
 Option Explicit
-Const Versione = "1.4.0"
+Const Versione = "1.5.0"
 'dal 1.3.0 in avanti ho rivoluzionato i Flink per tutti i link (non riuscivo senza le informazioni da dove veniva il link a ricostruire i link spostati)
 'ATTENZIONE questo succede quando uno spostamento va a posizionarsi proprio dove c'èra un altro hyperlink.
-'ora i link saranno del tipo:
-	'locali		HyFlink#XL#Pos=PS=xx#PC=jj#PR=rr#Punt=S=xx#C=jj#R=rr#HyElink
-	'Remoti		HyFlink#TO#Pos=PS=xx#PC=jj#PR=rr#cartella=C:\xxxxxx\yyyyy#file=LivelliAutonomia#S=xx#C=jj#R=rr#HyElink
-	'Remoti		HyFlink#FR#Pos=PS=xx#PC=jj#PR=rr#cartella=C:\xxxxxx\yyyyy#file=LivelliAutonomia#S=xx#C=jj#R=rr#HyElink
+'ora i link saranno del tipo locali		HyFlink#XL#Pos=PS=xx#PC=jj#PR=rr#Punt=S=xx#C=jj#R=rr#HyElink
+							'Remoti		HyFlink#TO#Pos=PS=xx#PC=jj#PR=rr#cartella=C:\xxxxxx\yyyyy#file=LivelliAutonomia#S=xx#C=jj#R=rr#HyElink
+							'Remoti		HyFlink#FR#Pos=PS=xx#PC=jj#PR=rr#cartella=C:\xxxxxx\yyyyy#file=LivelliAutonomia#S=xx#C=jj#R=rr#HyElink
 'Con la 1.4.0 sfrutto in nuovi Flink per gestire anche movimenti contemporanei del TO e FR.
+'1.4.1 gestisce il path dei nomi dei file Linked come relativi alla foldeMaster
+'1.5.0 soluzione errori 1.4.1
+Dim objArgs
+Set objArgs = Wscript.Arguments
+'WScript.Echo objArgs(0) & " count:" & objArgs.Count
+if (objArgs.Count > 0) then
+	if (strComp(objArgs(0), "version") = 0) then
+		WScript.Echo "Versione: "&Versione
+		WScript.Quit 0
+	end if
+end if
 
 Const Name = "HypLink"
 
@@ -53,7 +63,7 @@ Dim listaFlink(17,500)	 ' 0	sheetLocale
                          ' 1	rigaLocale
                          ' 2	colLocNum
                          ' 3	colonnaLocale
-                         ' 4    cartellaLinked
+                         ' 4    cartellaLinked (Rel)
                          ' 5 	Path completo del file linkato cartellaLinked &"\"& fileCompletoLinked
                          ' 6 	simulazione SubAddress sh_name &"!"& colonnaLinked & rigaLinked
                          ' 7 	sh_name 'devo usare il nome
@@ -73,7 +83,7 @@ Dim listaLinkedFlink(17,500)  	 ' 0	sheetLocale
                                  ' 1	rigaLocale
                                  ' 2	colLocNum
                                  ' 3	colonnaLocale
-                                 ' 4    cartellaLinked
+                                 ' 4    cartellaLinked (Rel)
                                  ' 5 	Path completo del file linkato cartellaLinked &"\"& fileCompletoLinked
                                  ' 6 	simulazione SubAddress sh_name &"!"& colonnaLinked & rigaLinked
                                  ' 7 	sh_name 'devo usare il nome
@@ -289,7 +299,7 @@ if (aggiuntaLink) then
     incrociaFlinkHyp
 else
 	On Error Resume Next
-	objStdOut.Write "<font color='blue'>Acquisisco LinkedFlink dopo Aggiunte</font>"&vbCrLf
+	objStdOut.Write "<font color='blue'>Acquisisco LinkedFlink</font>"&vbCrLf
 	on error goto 0
     raccogliLinkedFlink 'non ci sono state aggiunte quindi popolo la lista linkedFlink
     incrociaFlinkHyp
@@ -324,6 +334,17 @@ end if
 
 Call objWorkbook.Save
 Call objWorkbook.Close
+
+for y = 0 to n_fileIn-1 
+    'On Error Resume Next
+    if Not (Instr(1,listaFile(y),"LinkSuSeStesso") >0 ) then
+        Set objWorkbook = objExcel.Workbooks.Open(listaFile(y), False, False)
+        settaFontPerCommenti
+        Call objWorkbook.Save
+        Call objWorkbook.Close
+    end if
+Next
+
 objExcel.Quit
 
 if Not (att) then
@@ -397,19 +418,21 @@ Dim ris, hypCorr, hypControparte, Controparte, foglio_s, col_s, riga_s
             if (strComp(listaFlink(5,y),"LinkSuSeStesso") = 0) then
                 'link Locale modificare l'Flink e l'Hyplink di chi mi puntava
                 Controparte = cercaContropartePOS(y) 'Devo cercare il Flink che ha come POS il mio puntamento
-                listaFlink(7,Controparte) = listaFlink(0,y)
-                listaFlink(8,Controparte) = listaFlink(3,y)
-                listaFlink(9,Controparte) = listaFlink(2,y)
-                listaFlink(10,Controparte) = listaFlink(1,y)
-                ' I POS vanno messi a posto 
-				listaFlink(14,y) = listaFlink(0,y)
-				listaFlink(15,y) = listaFlink(3,y)
-				listaFlink(16,y) = listaFlink(1,y)
+                'listaFlink(7,Controparte) = listaFlink(0,y)
+                'listaFlink(8,Controparte) = listaFlink(3,y)
+                'listaFlink(9,Controparte) = listaFlink(2,y)
+                'listaFlink(10,Controparte) = listaFlink(1,y)
+                ' I POS vanno messi a posto o meglio NON VANNO MESSI A POSTO ADESSO
+				'listaFlink(14,y) = listaFlink(0,y)
+				'listaFlink(15,y) = listaFlink(3,y)
+				'listaFlink(16,y) = listaFlink(1,y)
                 ' modifico l'Flink sul file
-				ris = scriviLinkTo(objWorksheet, listaFlink, Controparte, "XL")'serve a scrivere il giusto link sulla controparte
-                ris = scriviLinkTo(objWorksheet, listaFlink, y, "XL") 'serve a scrivere la giusta POS sul link spostato
+				'
+				ris = modificaLinkToLocal(objWorksheet, y, listaFlink(0,Controparte), ListaFlink(3,Controparte),ListaFlink(1,Controparte)) 'serve a scrivere la giusta POS sul link spostato (gli passo il PUNT per poter scrivere il link verso l'eventuale nuova cella della controparte)
+                ' nel caso anche la controparte non sia piu alla sua vecchia posizione.
+                ris = modificaLinkToLocal(objWorksheet, Controparte, listaFlink(0,y), ListaFlink(3,y),ListaFlink(1,y)) 'serve a scrivere il giusto link sulla controparte (gli passo il nuovo PUNT)
                 ' modifico l'hyplink sul file
-				modificaHypTo Controparte,listaFlink   
+				modificaHypTo Controparte,listaFlink, listaFlink(0,y), listaFlink(2,y), listaFlink(3,y), listaFlink(1,y)
             else
                 'remoto      : llinkedFlink e l'Hyperlink sul file remoto
                 hypCorr = listaFlink(12,y)
@@ -419,17 +442,18 @@ Dim ris, hypCorr, hypControparte, Controparte, foglio_s, col_s, riga_s
                     foglio_s = listaLinkedFlink(7,Controparte)
 			        col_s = listaLinkedFlink(8,Controparte)
 			        riga_s = listaLinkedFlink(10,Controparte)
-                    listaLinkedFlink(7,Controparte) = listaFlink(0,y)
-                    listaLinkedFlink(8,Controparte) = listaFlink(3,y)
-                    listaLinkedFlink(9,Controparte) = listaFlink(2,y)
-                    listaLinkedFlink(10,Controparte) = listaFlink(1,y)
+                    'listaLinkedFlink(7,Controparte) = listaFlink(0,y)
+                    'listaLinkedFlink(8,Controparte) = listaFlink(3,y)
+                    'listaLinkedFlink(9,Controparte) = listaFlink(2,y)
+                    'listaLinkedFlink(10,Controparte) = listaFlink(1,y)
                     ' metto a posto il POS sulla listaflink
-                    listaFlink(14,y) = listaFlink(0,y)
-                    listaFlink(15,y) = listaFlink(3,y)
-                    listaFlink(16,y) = listaFlink(1,y)
+                    'listaFlink(14,y) = listaFlink(0,y)
+                    'listaFlink(15,y) = listaFlink(3,y)
+                    'listaFlink(16,y) = listaFlink(1,y)
                     ' modifico l'Flink sul file
-                    ris = scriviLinkTo(objWorksheet, listaFlink, y, "TO") 'serve a scrivere la giusta POS sul link spostato
-                    ris = scrivoLinkSuLinkedPOS(y,listaFlink,listaFlink(5,y)) 'false per non eseguire anche l'hyperlink in modalità standard
+					'
+                    ris = modificaLinkTo(objWorksheet, y, "TO") 'serve a scrivere la giusta POS sul link spostato
+                    ris = scrivoLinkSuLinkedPOS(Controparte, y) 'scrivo il nuovo Flink
 			        if Not (ris) then
 					    On Error Resume Next
 				        objStdOut.Write "<font color ='red'>Errore nella creazione del HyFlink#FR# su:"&listaFlink(5,y)&"</font>"&vbCrLf
@@ -438,7 +462,7 @@ Dim ris, hypCorr, hypControparte, Controparte, foglio_s, col_s, riga_s
                        Err.Clear
 			        end if
 			        'Corregge l'Hyperlink dal linkedFlink verso di me partendo dalla posizione RPos
-			        modificaHypFromPOS y, listaFlink, listaLinkedFlink(0,Controparte), listaLinkedFlink(3,Controparte), listaLinkedFlink(1,Controparte), foglio_s,col_s, riga_s 
+			        modificaHypFromPOS y, Controparte
 					'modificaHypFrom y, listaFlink, foglio_s, col_s, riga_s, false
                 else
                     On Error Resume Next
@@ -455,24 +479,32 @@ Dim ris, hypCorr, hypControparte, Controparte, foglio_s, col_s, riga_s
 			'                             file parziale di questo linkedFlink,sheet di POS          , riga del POS         ,colonna del POS
             if (Controparte <> -1) then
                 ' metto a posto il POS sulla listaLinkedFlink
-                listaLinkedFlink(14,y) = listaLinkedFlink(0,y)
-                listaLinkedFlink(15,y) = listaLinkedFlink(3,y)
-                listaLinkedFlink(16,y) = listaLinkedFlink(1,y)
+                'listaLinkedFlink(14,y) = listaLinkedFlink(0,y)
+                'listaLinkedFlink(15,y) = listaLinkedFlink(3,y)
+                'listaLinkedFlink(16,y) = listaLinkedFlink(1,y)
 				'metto a posto il puntamento della listaFlink sulla mia nuova posizione
-                listaFlink(7,Controparte) = listaLinkedFlink(0,y)
-                listaFlink(8,Controparte) = listaLinkedFlink(3,y)
-                listaFlink(9,Controparte) = listaLinkedFlink(2,y)
-                listaFlink(10,Controparte) = listaLinkedFlink(1,y)
-
-                ris = scrivoLinkSuLinked(Controparte,listaFlink,false,"FR")
-                ris = scriviLinkTo(objWorksheet, listaFlink, Controparte, "TO")
+                'listaFlink(7,Controparte) = listaLinkedFlink(0,y)
+                'listaFlink(8,Controparte) = listaLinkedFlink(3,y)
+                'listaFlink(9,Controparte) = listaLinkedFlink(2,y)
+                'listaFlink(10,Controparte) = listaLinkedFlink(1,y)
+				
+				'scrivo il nuovo pos sul Flink sul file linked, non modifico la lista quindi passo i valori della posizione con listaLinkedFlink
+                ris = newPOSLinked(Controparte,y)
+				if Not (ris) then
+					On Error Resume Next
+				    objStdOut.Write "<font color ='red'>Errore nella modifica del POS su LinkedFlink su:"&listaFlink(5,y)&" s:"&listaLinkedFlink(0,y)&" c:"&listaLinkedFlink(3,y)&" r:"&listaLinkedFlink(1,y)&"</font>"&vbCrLf
+					on error goto 0
+		        end if
+				'modifica del Flink 
+				ris = newFlinkHypLink(objWorksheet, listaFlink, Controparte, listaLinkedFlink(0,y), listaLinkedFlink(2,y), listaLinkedFlink(3,y), listaLinkedFlink(1,y))
                 if Not (ris) then
 					On Error Resume Next
-				    objStdOut.Write "<font color ='red'>Errore nella creazione del HyFlink#TO# su:"&folderMaster&"\"&fileMaster&" s:"&listaFlink(0,Controparte)&" c:"&listaFlink(3,Controparte)&" r:"&listaFlink(1,Controparte)&"</font>"&vbCrLf
+				    objStdOut.Write "<font color ='red'>Errore newFlinkHypLink modifica HyFlink#TO# su:"&folderMaster&"\"&fileMaster&" s:"&listaFlink(0,Controparte)&" c:"&listaFlink(3,Controparte)&" r:"&listaFlink(1,Controparte)&"</font>"&vbCrLf
 					on error goto 0
 		        end if
                 'Corregge l'Hyperlink
-		        modificaHypTo Controparte, listaFlink
+				modificaHypTo Controparte,listaFlink, listaLinkedFlink(0,y), listaLinkedFlink(2,y), listaLinkedFlink(3,y), listaLinkedFlink(1,y)
+		        'modificaHypTo Controparte, listaFlink
             else
                 On Error Resume Next
 				objStdOut.Write "<font color ='red'>Errore Non trovo la controparte su listaFlink a:"&listaLinkedFlink(11,y)&" s:"&listaLinkedFlink(0,y)&" c:"&listaLinkedFlink(3,y)&" r:"&listaLinkedFlink(1,y)&"</font>"&vbCrLf
@@ -492,7 +524,7 @@ function raccogliHypFlink()
 	sheet_name = objWorksheet.Name
 	If (Err.Number <> 0) Then
 		
-		objStdOut.Write "<font color='red'>Errore creazione oggetto sheet file Master</font><br/> Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&vbCrLf
+		objStdOut.Write "<font color='red'>Errore creazione oggetto sheet file Master</font><br/> Descrizione " & Err.Description&vbCrLf
 		
         'objShell.popup "Errore creazione oggetto sheet file Master Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
         Err.Clear
@@ -537,7 +569,7 @@ function creaFlinkLocali()
 				On Error Resume Next
                 Set objWorksheet = objWorkbook.Worksheets(listahyp(0,y))
 		        If (Err.Number <> 0) Then
-				    objStdOut.Write "<font color ='red'>Errore creazione oggetto sheet Master</font><br/> Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&vbCrLf
+				    objStdOut.Write "<font color ='red'>Errore creazione oggetto sheet Master</font><br/> Descrizione " & Err.Description&vbCrLf
 					
 			        'objShell.popup "Errore creazione oggetto sheet Master Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
                     Err.Clear
@@ -575,7 +607,7 @@ Dim sheet_nf
 	        Set objWorkSecondbook = objExcel.Workbooks.Open(listaFile(y), False, False)
 	        If (Err.Number <> 0) Then
 				
-			    objStdOut.Write "<font color ='red'>Errore nell'apertura file Linked Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			    objStdOut.Write "<font color ='red'>Errore nell'apertura file Linked Descrizione " & Err.Description&"</font>"&vbCrLf
 				
                 'objShell.popup "Errore nell'apertura file Linked Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
                 Err.Clear
@@ -600,7 +632,7 @@ Dim sheet_nf
 				On Error Resume Next
 		        Set objWorkSecondsheet = objWorkSecondbook.Worksheets(sheet)
 		        If (Err.Number <> 0) Then
-				    objStdOut.Write "<font color ='red'>Errore creazione oggetto sheet Linked Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+				    objStdOut.Write "<font color ='red'>Errore creazione oggetto sheet Linked Descrizione " & Err.Description&"</font>"&vbCrLf
 					
                     'objShell.popup "Errore creazione oggetto sheet Linked Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
                     Err.Clear
@@ -609,7 +641,7 @@ Dim sheet_nf
 				On Error Resume Next
                 sheet_name = objWorkSecondsheet.Name
                 If (Err.Number <> 0) Then
-				    objStdOut.Write "<font color ='red'>Errore Name da oggetto sheet Linked Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+				    objStdOut.Write "<font color ='red'>Errore Name da oggetto sheet Linked Descrizione " & Err.Description&"</font>"&vbCrLf
 					
                     'objShell.popup "Errore Name da oggetto sheet Linked Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
                     Err.Clear
@@ -621,7 +653,7 @@ Dim sheet_nf
 			On Error Resume Next
 	        objWorkSecondbook.Close False,listaFile(y)
 			If (Err.Number <> 0) Then
-				    objStdOut.Write "<font color ='red'>Errore RaccogliLinkedFlink Close File Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+				    objStdOut.Write "<font color ='red'>Errore RaccogliLinkedFlink Close File Descrizione " & Err.Description&"</font>"&vbCrLf
                     'objShell.popup "Errore RaccogliLinkedFlink Close File Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
                     Err.Clear
 		     End If
@@ -637,7 +669,7 @@ Dim objWsh, sheet_name, hyp, lo_riga, lo_colonna, index_lf, Flink, posF, pos1, f
         On Error Resume Next
 		Set objWsh = objWb.Worksheets(sheet)
 		If (Err.Number <> 0) Then
-			objStdOut.Write "<font color ='red'>Errore select sheet  Descrizione: " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			objStdOut.Write "<font color ='red'>Errore select sheet  Descrizione: " & Err.Description&"</font>"&vbCrLf
 		    'objShell.popup "Errore select sheet  Descrizione: " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
             Err.Clear
         End If
@@ -645,7 +677,7 @@ Dim objWsh, sheet_name, hyp, lo_riga, lo_colonna, index_lf, Flink, posF, pos1, f
 		On Error Resume Next
 		sheet_name = objWsh.Name
 		If (Err.Number <> 0) Then
-			objStdOut.Write "<font color ='red'>Errore Nome sheet  Descrizione: " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			objStdOut.Write "<font color ='red'>Errore Nome sheet  Descrizione: " & Err.Description&"</font>"&vbCrLf
 		    'objShell.popup "Errore Nome sheet  Descrizione: " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
             Err.Clear
         End If
@@ -658,7 +690,7 @@ Dim objWsh, sheet_name, hyp, lo_riga, lo_colonna, index_lf, Flink, posF, pos1, f
 				On Error Resume Next
 			    file = hyp.Address
                 If (Err.Number <> 0) Then
-			        objStdOut.Write "<font color ='red'>Errore estrazione Address di Hyperlink Descrizione: " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			        objStdOut.Write "<font color ='red'>Errore estrazione Address di Hyperlink Descrizione: " & Err.Description&"</font>"&vbCrLf
 		            'objShell.popup "Errore estrazione Address di Hyperlink Descrizione: " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
                     Err.Clear
                 End If
@@ -666,7 +698,7 @@ Dim objWsh, sheet_name, hyp, lo_riga, lo_colonna, index_lf, Flink, posF, pos1, f
 				On Error Resume Next
                 sub_add = hyp.SubAddress
                 If (Err.Number <> 0) Then
-			        objStdOut.Write "<font color ='red'>Errore estrazione SubAddress di Hyperlink Descrizione: " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			        objStdOut.Write "<font color ='red'>Errore estrazione SubAddress di Hyperlink Descrizione: " & Err.Description&"</font>"&vbCrLf
 		            'objShell.popup "Errore estrazione SubAddress di Hyperlink Descrizione: " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
                     Err.Clear
                 End If
@@ -695,22 +727,21 @@ Dim objWsh, sheet_name, hyp, lo_riga, lo_colonna, index_lf, Flink, posF, pos1, f
 	Next
 end function
 
-function scrivoLinkSuLinkedPOS(ByVal y, ByRef lista_ref, ByVal file) 'scrive il Flink sul file remoto usando la giusta posizione e non quella precedente
+function scrivoLinkSuLinkedPOS(ByVal y, ByVal idy) 'scrive il Flink sul file remoto usando la giusta posizione e non quella precedente
+'scrivoLinkSuLinkedPOS(Controparte, y) y è il puntatore di listaFlink per ottenere il nuovo puntamento
 Dim commento_esiste, comm, commento, bReadOnly
 			On Error Resume Next
-		    Set objWorkSecondbook = objExcel.Workbooks.Open(file, False, False)
+		    Set objWorkSecondbook = objExcel.Workbooks.Open(listaFlink(5,idy), False, False)
 		    If (Err.Number <> 0) Then
-			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: apertura Linked "&lista_ref(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
-			    'objShell.popup "Errore scrivoLinkSuLinked: apertura Linked "&lista_ref(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
+			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinkedPOS: apertura Linked "&listaFlink(5,idy)&" Descrizione " & Err.Description&"</font>"&vbCrLf
 			    Err.Clear
 		    End If
 			on error goto 0
 			bReadOnly = objWorkSecondbook.ReadOnly
 			If bReadOnly = True Then
 				On Error Resume Next
-				objStdOut.Write "<font color ='red'>Errore apertura file "&lista_ref(5,y)&", File OCCUPATO</font><br/>"&vbCrlf
+				objStdOut.Write "<font color ='red'>Errore apertura file "&listaFlink(5,idy)&", File OCCUPATO</font><br/>"&vbCrlf
 				on error goto 0
-				'objShell.popup "Errore apertura file "&lista_ref(5,y)&", File OCCUPATO" , 5, "Errore", CRITICAL_ICON + 4096
 				Call objWorkSecondbook.Close
 				Call objWorkbook.Close
 				objExcel.Quit
@@ -720,16 +751,15 @@ Dim commento_esiste, comm, commento, bReadOnly
 				Wscript.quit 1055
 			End If
 			On Error Resume Next
-            Set objWorkSecondsheet = objWorkSecondbook.Worksheets(lista_ref(0,y)) 'mi setto sul giusto sheet
+            Set objWorkSecondsheet = objWorkSecondbook.Worksheets(listalinkedFlink(0,y)) 'mi setto sul giusto sheet
             If (Err.Number <> 0) Then
-			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: set sheet " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
-	    	    'objShell.popup "Errore scrivoLinkSuLinked: set sheet " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
+			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinkedPOS: set sheet " & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
 			    Err.Clear
 		    End If
 			on error goto 0
 			On Error Resume Next
 	        commento_esiste = true
-			comm = objWorkSecondsheet.Cells(lista_ref(1,y), lista_ref(2,y)).Comment.Text
+			comm = objWorkSecondsheet.Cells(listalinkedFlink(1,y), listalinkedFlink(2,y)).Comment.Text
 	        If (Err.Number <> 0) Then
 			    'Il commento non esiste ancora
                 comm =""
@@ -745,47 +775,135 @@ Dim commento_esiste, comm, commento, bReadOnly
 				    commento = comm
 			    end if
             end if
-	        commento = commento & vbCrLf&"HyFlink#FR#Pos=PS="&lista_ref(1,y)&"#PC="&lista_ref(3,y)&"#PR="&lista_ref(1,y)&"#cartella="&folderMaster&"#file="&fileMaster&"#S="&lista_ref(7,y)&"#C="&lista_ref(8,y)&"#R="&lista_ref(10,y)&"#HyElink"
+	        commento = commento & vbCrLf&"HyFlink#FR#Pos=PS="&listalinkedFlink(0,y)&"#PC="&listalinkedFlink(3,y)&"#PR="&listalinkedFlink(1,y)&"#cartella=.#file="&fileMaster&"#S="&listaFlink(0,idy)&"#C="&listaflink(3,idy)&"#R="&listaFlink(1,idy)&"#HyElink"
 	        commento = commento & vbCrLf&"FcomTime#"&Date&" "&Hour(Now())&":"&Minute(Now())&":"&Second(Now())&"#FcomTime"
             if (commento_esiste) then
                 On Error Resume Next
-			    objWorkSecondsheet.Cells(lista_ref(10,y), lista_ref(9,y)).ClearComments
+			    objWorkSecondsheet.Cells(listalinkedFlink(1,y), listalinkedFlink(2,y)).ClearComments
 			    If (Err.Number <> 0) Then
-			        objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: add comment " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
-	    	        'objShell.popup "Errore scrivoLinkSuLinked: add comment " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
+			        objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinkedPOS: add comment " & Err.Number & " Description " & Err.Description &"</font>"&vbCrLf
 	            End If
 			    on error goto 0
             end if
 			On Error Resume Next
-	        objWorkSecondsheet.Cells(lista_ref(10,y), lista_ref(9,y)).AddComment commento
+	        objWorkSecondsheet.Cells(listalinkedFlink(1,y), listalinkedFlink(2,y)).AddComment commento
 	        If (Err.Number <> 0) Then
-			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: add comment " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
-	    	    'objShell.popup "Errore scrivoLinkSuLinked: add comment " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
+			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinkedPOS: add comment " & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
 	        End If
 			on error goto 0
 			On Error Resume Next
 		    objWorkSecondbook.Save
 		    If (Err.Number <> 0) Then
 				
-			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: Save linked Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
-				
-			    'objShell.popup "Errore scrivoLinkSuLinked: Save linked Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
+			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinkedPOS: Save linked Descrizione " & Err.Description&"</font>"&vbCrLf
 			    Err.Clear
 		    end if
 			on error goto 0
 			On Error Resume Next
 		    objWorkSecondbook.Close
 		    If (Err.Number <> 0) Then
-			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: Close Linked Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
-			    'objShell.popup "Errore scrivoLinkSuLinked: Close Linked Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
+			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinkedPOS: Close Linked Descrizione " & Err.Description&"</font>"&vbCrLf
 			    Err.Clear
 		    end if
 			on error goto 0
             scrivoLinkSuLinkedPOS = true
 end function
+
+
+
+
+
+
+function newPOSLinked(ByVal idlf, ByVal idll)
+	'newPOSLinked(Controparte,y)
+	'Vado a scrivere la nuova POS sul link remoto
+Dim commento_esiste, comm, commento, bReadOnly
+			On Error Resume Next
+		    Set objWorkSecondbook = objExcel.Workbooks.Open(listaFlink(5,idlf), False, False)
+		    If (Err.Number <> 0) Then
+			    objStdOut.Write "<font color ='red'>Errore newPOSLinked: apertura Linked "&listaFlink(5,idlf)&" Descrizione " & Err.Description&"</font>"&vbCrLf
+			    Err.Clear
+		    End If
+			on error goto 0
+			bReadOnly = objWorkSecondbook.ReadOnly
+			If bReadOnly = True Then
+				On Error Resume Next
+				objStdOut.Write "<font color ='red'>Errore apertura file "&listaFlink(5,idlf)&", File OCCUPATO</font><br/>"&vbCrlf
+				on error goto 0
+				Call objWorkSecondbook.Close
+				Call objWorkbook.Close
+				objExcel.Quit
+				On Error Resume Next
+				objStdOut.Write  "<br/><font color ='blue'>Programma Terminato a causa di file Occupato</font>"&vbCrLf&vbCrLf
+				on error goto 0
+				Wscript.quit 1055
+			End If
+			On Error Resume Next
+            Set objWorkSecondsheet = objWorkSecondbook.Worksheets(listaLinkedFlink(0,idll)) 'mi setto sul giusto sheet
+            If (Err.Number <> 0) Then
+			    objStdOut.Write "<font color ='red'>Errore newPOSLinked: set sheet " & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
+			    Err.Clear
+		    End If
+			on error goto 0
+			On Error Resume Next
+	        commento_esiste = true
+			comm = objWorkSecondsheet.Cells(listaLinkedFlink(1,idll), listaLinkedFlink(2,idll)).Comment.Text
+	        If (Err.Number <> 0) Then
+			    'Il commento non esiste ancora
+                comm =""
+                commento_esiste = false
+                Err.Clear
+	        End If
+			on error goto 0
+            if (commento_esiste) then
+			    if (Instr(1,comm,"HyFlink#") > 0) then 'c'è già un link devo toglierlo
+				    'rimuovo il link
+				    commento = rimuoviLink(comm)
+			    else
+				    commento = comm
+			    end if
+            end if
+	        commento = commento & vbCrLf&"HyFlink#FR#Pos=PS="&listaLinkedFlink(0,idll)&"#PC="&listaLinkedFlink(3,idll)&"#PR="&listaLinkedFlink(1,idll)&"#cartella=.#file="&fileMaster&"#S="&listaFlink(0,idlf)&"#C="&listaFlink(3,idlf)&"#R="&listaFlink(1,idlf)&"#HyElink"
+	        commento = commento & vbCrLf&"FcomTime#"&Date&" "&Hour(Now())&":"&Minute(Now())&":"&Second(Now())&"#FcomTime"
+            if (commento_esiste) then
+                On Error Resume Next
+			    objWorkSecondsheet.Cells(listaLinkedFlink(1,idll), listaLinkedFlink(2,idll)).ClearComments
+			    If (Err.Number <> 0) Then
+			        objStdOut.Write "<font color ='red'>Errore newPOSLinked: add comment " & Err.Number & " Description " & Err.Description &"</font>"&vbCrLf
+	            End If
+			    on error goto 0
+            end if
+			On Error Resume Next
+	        objWorkSecondsheet.Cells(listaLinkedFlink(1,idll), listaLinkedFlink(2,idll)).AddComment commento
+	        If (Err.Number <> 0) Then
+			    objStdOut.Write "<font color ='red'>Errore newPOSLinked: add comment " & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
+	        End If
+			on error goto 0
+			On Error Resume Next
+		    objWorkSecondbook.Save
+		    If (Err.Number <> 0) Then
+				
+			    objStdOut.Write "<font color ='red'>Errore newPOSLinked: Save linked Descrizione " & Err.Description&"</font>"&vbCrLf
+			    Err.Clear
+		    end if
+			on error goto 0
+			On Error Resume Next
+		    objWorkSecondbook.Close
+		    If (Err.Number <> 0) Then
+			    objStdOut.Write "<font color ='red'>Errore newPOSLinked: Close Linked Descrizione " & Err.Description&"</font>"&vbCrLf
+			    Err.Clear
+		    end if
+			on error goto 0
+            newPOSLinked = true
+end function
+
+
+
+
+
 		
 function scrivoLinkSuLinked(ByVal y, ByRef lista_ref, ByVal hyp_yn, ByVal chiave) 'hyp se deve fare anche l'hyperlink
-Dim idx,objSheet, commento, objLink,comm, commento_esiste
+Dim idx,objSheet, commento, objLink,comm, commento_esiste, cartella
 'Inizio la scrittura del HyFlink#FR# sul file linkato
 		'On Error Resume Next
         if (Instr(1,lista_ref(5,y),"LinkSuSeStesso") >0 ) then 'Il link è locale sullo stesso file
@@ -794,7 +912,7 @@ Dim idx,objSheet, commento, objLink,comm, commento_esiste
 			On Error Resume Next
             Set objWorksheet = objWorkbook.Worksheets(lista_ref(7,y)) 'mi setto sul giusto sheet
             If (Err.Number <> 0) Then
-			    objStdOut.Write "<font color ='red'>Errore set sheet scrivoLinkSuLinked: " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			    objStdOut.Write "<font color ='red'>Errore set sheet scrivoLinkSuLinked: " & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
 	    	    'objShell.popup "Errore set sheet scrivoLinkSuLinked Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 			    Err.Clear
 		    End If
@@ -803,7 +921,7 @@ Dim idx,objSheet, commento, objLink,comm, commento_esiste
 			On Error Resume Next
 			comm = objWorksheet.Cells(lista_ref(10,y), lista_ref(9,y)).Comment.Text
 	        If (Err.Number <> 0) Then
-			    objStdOut.Write "<font color ='red'>Errore clear comment scrivoLinkSuLinked: " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			    objStdOut.Write "<font color ='red'>Errore clear comment scrivoLinkSuLinked: " & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
 	    	    'objShell.popup "Errore clear comment scrivoLinkSuLinked Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 			    Err.Clear
 	        End If
@@ -816,12 +934,12 @@ Dim idx,objSheet, commento, objLink,comm, commento_esiste
 			end if
 			
 			'HyFlink#XL#Pos=S=xx#C=jj#R=rr#Punt=S=xx#C=jj#R=rr#HyElink
-			commento = commento & vbCrLf&"HyFlink#"&chiave&"#Pos=PS="&lista_ref(7,y)&"#PC="&lista_ref(8,idx)&"#PR="&lista_ref(10,y)&"#Punt=S="&lista_ref(0,y)&"#C="&lista_ref(3,y)&"#R="&lista_ref(1,y)&"#HyElink"
+			commento = commento & vbCrLf&"HyFlink#"&chiave&"#Pos=PS="&lista_ref(7,y)&"#PC="&lista_ref(8,idx)&"#PR="&lista_ref(10,y)&"#Punt=#S="&lista_ref(0,y)&"#C="&lista_ref(3,y)&"#R="&lista_ref(1,y)&"#HyElink"
 	        commento = commento & vbCrLf&"FcomTime#"&Date&" "&Hour(Now())&":"&Minute(Now())&":"&Second(Now())&"#FcomTime"
 			On Error Resume Next
 			objWorksheet.Cells(lista_ref(10,y), lista_ref(9,y)).ClearComments
 			If (Err.Number <> 0) Then
-			    objStdOut.Write "<font color ='red'>Errore clear commento 3 scrivoLinkSuLinked: " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			    objStdOut.Write "<font color ='red'>Errore clear commento 3 scrivoLinkSuLinked: " & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
 	    	    'objShell.popup "Errore Clear commento 3 scrivoLinkSuLinked Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
                 Err.Clear
 	        End If
@@ -829,14 +947,15 @@ Dim idx,objSheet, commento, objLink,comm, commento_esiste
 			On Error Resume Next
             objWorksheet.Cells(lista_ref(10,y), lista_ref(9,y)).AddComment commento
 	        If (Err.Number <> 0) Then
-			    objStdOut.Write "<font color ='red'>Errore add comment scrivoLinkSuLinked: " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			    objStdOut.Write "<font color ='red'>Errore add comment scrivoLinkSuLinked: " & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
 	    	    'objShell.popup "Errore add comment scrivoLinkSuLinked Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
                 Err.Clear
 	        End If
 			on error goto 0
             if (hyp_yn) then
 				On Error Resume Next
-	            Set objLink = objWorksheet.Hyperlinks.Add(objWorkbook.Worksheets(objWorksheet.Name).Range("'"&lista_ref(7,y)&"'!"&lista_ref(8,y)&lista_ref(10,y)), _
+                'Ho modificato da (objWorksheet.Name) a (lista_ref(7,y))
+	            Set objLink = objWorksheet.Hyperlinks.Add(objWorkbook.Worksheets(lista_ref(7,y)).Range("'"&lista_ref(7,y)&"'!"&lista_ref(8,y)&lista_ref(10,y)), _
                     "", _
                     "'"&lista_ref(0,y)&"'!"&lista_ref(3,y)&lista_ref(1,y), _
                     "hypCreato")
@@ -850,10 +969,9 @@ Dim idx,objSheet, commento, objLink,comm, commento_esiste
             end if
             'Fine scrittura HyFlink#FR#
         else
-			On Error Resume Next
 		    Set objWorkSecondbook = objExcel.Workbooks.Open(lista_ref(5,y), False, False)
 		    If (Err.Number <> 0) Then
-			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: apertura Linked "&lista_ref(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: apertura Linked "&lista_ref(5,y)&" Descrizione " & Err.Description&"</font>"&vbCrLf
 				
 			    'objShell.popup "Errore scrivoLinkSuLinked: apertura Linked "&lista_ref(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 			    Err.Clear
@@ -876,7 +994,7 @@ Dim idx,objSheet, commento, objLink,comm, commento_esiste
 			On Error Resume Next
             Set objWorkSecondsheet = objWorkSecondbook.Worksheets(lista_ref(7,y)) 'mi setto sul giusto sheet
             If (Err.Number <> 0) Then
-			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: set sheet " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: set sheet " & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
 	    	    'objShell.popup "Errore scrivoLinkSuLinked: set sheet " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 			    Err.Clear
 		    End If
@@ -899,13 +1017,14 @@ Dim idx,objSheet, commento, objLink,comm, commento_esiste
 				    commento = comm
 			    end if
             end if
-	        commento = commento & vbCrLf&"HyFlink#FR#Pos=PS="&lista_ref(7,y)&"#PC="&lista_ref(8,y)&"#PR="&lista_ref(10,y)&"#cartella="&folderMaster&"#file="&fileMaster&"#S="&lista_ref(0,y)&"#C="&lista_ref(3,y)&"#R="&lista_ref(1,y)&"#HyElink"
+            'Qui devo usare il relativo nella costruzione del commento 
+	        commento = commento & vbCrLf&"HyFlink#FR#Pos=PS="&lista_ref(7,y)&"#PC="&lista_ref(8,y)&"#PR="&lista_ref(10,y)&"#cartella=.#file="&fileMaster&"#S="&lista_ref(0,y)&"#C="&lista_ref(3,y)&"#R="&lista_ref(1,y)&"#HyElink"
 	        commento = commento & vbCrLf&"FcomTime#"&Date&" "&Hour(Now())&":"&Minute(Now())&":"&Second(Now())&"#FcomTime"
             if (commento_esiste) then
                 On Error Resume Next
 			    objWorkSecondsheet.Cells(lista_ref(10,y), lista_ref(9,y)).ClearComments
 			    If (Err.Number <> 0) Then
-			        objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: add comment " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			        objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: add comment " & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
 	    	        'objShell.popup "Errore scrivoLinkSuLinked: add comment " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 	            End If
 			    on error goto 0
@@ -913,7 +1032,7 @@ Dim idx,objSheet, commento, objLink,comm, commento_esiste
 			On Error Resume Next
 	        objWorkSecondsheet.Cells(lista_ref(10,y), lista_ref(9,y)).AddComment commento
 	        If (Err.Number <> 0) Then
-			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: add comment " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: add comment " & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
 	    	    'objShell.popup "Errore scrivoLinkSuLinked: add comment " & Err.Number & " Description " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 	        End If
 			on error goto 0
@@ -936,7 +1055,7 @@ Dim idx,objSheet, commento, objLink,comm, commento_esiste
 		    objWorkSecondbook.Save
 		    If (Err.Number <> 0) Then
 				
-			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: Save linked Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: Save linked Descrizione " & Err.Description&"</font>"&vbCrLf
 				
 			    'objShell.popup "Errore scrivoLinkSuLinked: Save linked Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 			    Err.Clear
@@ -945,7 +1064,7 @@ Dim idx,objSheet, commento, objLink,comm, commento_esiste
 			On Error Resume Next
 		    objWorkSecondbook.Close
 		    If (Err.Number <> 0) Then
-			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: Close Linked Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			    objStdOut.Write "<font color ='red'>Errore scrivoLinkSuLinked: Close Linked Descrizione " & Err.Description&"</font>"&vbCrLf
 			    'objShell.popup "Errore scrivoLinkSuLinked: Close Linked Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 			    Err.Clear
 		    end if
@@ -1058,7 +1177,8 @@ Dim ws, objSheet, objLink
 	on error goto 0
 end function
 
-function modificaHypTo(ByVal punt, ByRef lista)
+function modificaHypTo(ByVal punt, ByRef lista, p_sh, p_cn, p_c, p_r)
+'modificaHypTo Controparte,listaFlink, listaFlink(0,y), listaFlink(2,y), listaFlink(3,y), listaFlink(1,y)
 Dim ws, objSheet, subb, subbTest
 	'On Error Resume Next
     Set objSheet = objWorkbook.Worksheets(lista(0,punt))
@@ -1070,7 +1190,7 @@ Dim ws, objSheet, subb, subbTest
 	end if
     if (subbTest = lista(6,punt)) then
 		On Error Resume Next
-		objSheet.range("'"&lista(0,punt)&"'!"&lista(3,punt)&lista(1,punt)).Hyperlinks(1).SubAddress = "'"&lista(7,punt)&"'!"&lista(8,punt)&lista(10,punt)
+		objSheet.range("'"&lista(0,punt)&"'!"&lista(3,punt)&lista(1,punt)).Hyperlinks(1).SubAddress = "'"&p_sh&"'!"&p_c&p_r
         If (Err.Number <> 0) Then
 	        objStdOut.Write "<font color ='red'>Errore modificaHypTo: modifica SubAddress "&lista(7,punt)&"!"&lista(8,punt)&lista(10,punt)& "Descrizione: "&Err.Description&"</font>"&vbCrLf
 	        'objShell.popup "Errore modificaHypTo: modifica SubAddress "&lista(7,punt)&"!"&lista(8,punt)&lista(10,punt)& "Descrizione: "&Err.Description
@@ -1078,34 +1198,33 @@ Dim ws, objSheet, subb, subbTest
 	    End If
 		on error goto 0
 		On Error Resume Next
-		objStdOut.Write "<font color ='orange'>modificaHypTo: Hyperlink modificato "&objSheet.range("'"&lista(0,punt)&"'!"&lista(3,punt)&lista(1,punt)).Hyperlinks(1).SubAddress&"</font>"&vbCrLf
-        Uscita = Uscita & "<tr><td colspan=10><font color ='orange'>Hyperlink modificato da:"&subb&" a:"&objSheet.range("'"&lista(0,punt)&"'!"&lista(3,punt)&lista(1,punt)).Hyperlinks(1).SubAddress&"</font></td></tr>"
+		objStdOut.Write "<font color ='orange'>modificaHypTo: Ipertesto modificato da:"&subb&" a:"&objSheet.range("'"&lista(0,punt)&"'!"&lista(3,punt)&lista(1,punt)).Hyperlinks(1).SubAddress&"</font>"&vbCrLf
+        Uscita = Uscita & "<tr><td colspan=10><font color ='orange'>Ipertesto modificato da:"&subb&" a:"&objSheet.range("'"&lista(0,punt)&"'!"&lista(3,punt)&lista(1,punt)).Hyperlinks(1).SubAddress&"</font></td></tr>"
 		on error goto 0
     else
 		On Error Resume Next
 		objStdOut.Write "<font color ='red'>Errore modificaHypTo: L'Hyperlink non corrisponde :"&objSheet.range("'"&lista(0,punt)&"'!"&lista(3,punt)&lista(1,punt)).Hyperlinks(1).SubAddress&" diverso da:"&lista(6,punt)&"</font>"&vbCrLf
 		on error goto 0
-        'objShell.popup "Errore modificaHypTo:L'Hyperlink non corrisponde "&objSheet.range("'"&lista(0,punt)&"'!"&lista(3,punt)&lista(1,punt)).Hyperlinks(1).SubAddress
 		Err.Clear
     end if
 end function
 
-function modificaHypFromPOS(ByVal punt, ByRef lista, ByVal Rsh, ByVal Rcol, ByVal Rriga, ByVal foglio_s,ByVal col_s, ByVal riga_s )
+function modificaHypFromPOS(ByVal punt, ByVal idllf )
+'modificaHypFromPOS y, Controparte
 'funzione che va a modificare l'hyperlink remoto puntando su listaFlink selezionata ma scrivendo sulla posizione reale della linkedFlink
 'quindi gli passo la listaFlink selezionata ma gli passo anche la RPos della linkedFlink e il foglio,colonna,righa di dove ero prima
-Dim objSheet, subb, objRange, objLink
+Dim objSheet, subb, objRange, objLink, testSubb
 	On Error Resume Next
-	Set objWorkSecondbook = objExcel.Workbooks.Open(lista(5,punt), False, False)
+	Set objWorkSecondbook = objExcel.Workbooks.Open(listaFlink(5,punt), False, False)
 	If (Err.Number <> 0) Then
-	    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: apertura Linked "&lista(5,punt)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
-	    'objShell.popup "Errore modificaHypFrom: apertura Linked "&lista(5,punt)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
+	    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: apertura Linked "&lista(5,punt)&" Descrizione " & Err.Description&"</font>"&vbCrLf
 	    Err.Clear
 	End If
 	on error goto 0
 	bReadOnly = objWorkSecondbook.ReadOnly
 	If bReadOnly = True Then
 		On Error Resume Next
-		objStdOut.Write "<font color ='red'>Errore apertura file "&lista(5,punt)&", File OCCUPATO</font><br/>"&vbCrlf
+		objStdOut.Write "<font color ='red'>Errore apertura file "&listaFlink(5,punt)&", File OCCUPATO</font><br/>"&vbCrlf
 		on error goto 0
 		'objShell.popup "Errore apertura file "&lista(5,punt)&", File OCCUPATO" , 5, "Errore", CRITICAL_ICON + 4096
 		Call objWorkSecondbook.Close
@@ -1117,45 +1236,50 @@ Dim objSheet, subb, objRange, objLink
 		Wscript.quit 1055
 	End If
 	On Error Resume Next
-    Set objSheet = objWorkSecondbook.Worksheets(Rsh)
+    Set objSheet = objWorkSecondbook.Worksheets(listaLinkedFlink(0,idllf))
 	If (Err.Number <> 0) Then
-	    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: setta sheet Linked "&lista(7,punt)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
-	    'objShell.popup "Errore modificaHypFrom: setta sheet Linked "&lista(7,punt)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
+	    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: setta sheet Linked "&Rsh&" Descrizione " & Err.Description&"</font>"&vbCrLf
 	    Err.Clear
 	End If
 	on error goto 0
 	On Error Resume Next
-    subb = objSheet.range("'"&Rsh&"'!"&Rcol&Rriga).Hyperlinks(1).SubAddress
+    subb = objSheet.range("'"&listaLinkedFlink(0,idllf)&"'!"&listaLinkedFlink(3,idllf)&listaLinkedFlink(1,idllf)).Hyperlinks(1).SubAddress
 	If (Err.Number <> 0) Then
-	    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: Copia SubAddress Linked "&lista(7,punt)&"!"&lista(8,punt)&lista(10,punt)&"su:"&lista(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
-	    'objShell.popup "Errore modificaHypFrom: Copia SubAddress Linked "&lista(7,punt)&"!"&lista(8,punt)&lista(10,punt)&"su:"&lista(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
+	    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: Copia SubAddress Linked "&Rsh&"'!"&Rcol&Rriga&"su:"&lista(5,y)&" Descrizione " & Err.Description&"</font>"&vbCrLf
 	    Err.Clear
 	End If
 	on error goto 0
-	if ((subb = "'"&foglio_s&"'!"&col_s&riga_s) or (subb = foglio_s&"!"&col_s&riga_s)) then
+    if (InStr(1,subb,"'") > 0) then
+        testSubb = replace(subb,"'","")
+    end if
+	if (testSubb = listaLinkedFlink(6,idllf)) then
 		On Error Resume Next
-	    objSheet.range("'"&Rsh&"'!"&Rcol&Rriga).Hyperlinks(1).SubAddress = "'"&lista(0,punt)&"'!"&lista(3,punt)&lista(1,punt)
+	    objSheet.range("'"&listaLinkedFlink(0,idllf)&"'!"&listaLinkedFlink(3,idllf)&listaLinkedFlink(1,idllf)).Hyperlinks(1).SubAddress = "'"&listaFlink(0,punt)&"'!"&listaFlink(3,punt)&listaFlink(1,punt)
 	    If (Err.Number <> 0) Then
-		    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: Modifica SubAddress Linked "&lista(7,punt)&"!"&lista(8,punt)&lista(10,punt)&"su:"&lista(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+		    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: Modifica SubAddress Linked "&Rsh&"'!"&Rcol&Rriga&"su:"&lista(5,y)&" Descrizione " & Err.Description&"</font>"&vbCrLf
 		    Err.Clear
 	    End If
 		on error goto 0
     else
 		On Error Resume Next
-	    objStdOut.Write "<font color ='red'>modificaHypFromPOS: L'Hyperlink in modifica non corrisponde a quello atteso "&subb&" invece di "&foglio_s&"'!"&col_s&riga_s&"</font>"&vbCrLf
+	    objStdOut.Write "<font color ='red'>modificaHypFromPOS: L'Hyperlink in modifica non corrisponde a quello atteso "&subb&" invece di "&listadFlink(6,punt)&"</font>"&vbCrLf
 		on error goto 0
 	end if
+    On Error Resume Next
+	objStdOut.Write "<font color ='Purple'>modifica Ipertesto da: "&subb&" a: "&"'"&listaFlink(0,punt)&"'!"&listaFlink(3,punt)&listaFlink(1,punt)&"</font>"&vbCrLf
+    Uscita = Uscita & "<tr><td colspan=10><font color ='Purple'>modifica Ipertesto da: "&subb&" a: "&"'"&listaFlink(0,punt)&"'!"&listaFlink(3,punt)&listaFlink(1,punt)&"</font></td></tr>"
+	on error goto 0
 	On Error Resume Next
 	objWorkSecondbook.Save
     If (Err.Number <> 0) Then
-		objStdOut.Write "<font color ='red'>Errore modificaHypFromPOS: Salva Linked "&lista(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+		objStdOut.Write "<font color ='red'>Errore modificaHypFromPOS: Salva Linked "&listaFlink(5,punt)&" Descrizione " & Err.Description&"</font>"&vbCrLf
 		Err.Clear
 	 End If
      on error goto 0
 	 On Error Resume Next
 	 objWorkSecondbook.Close
      If (Err.Number <> 0) Then
-		objStdOut.Write "<font color ='red'>Errore modificaHypFromPOS: Chiudi Linked "&lista(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+		objStdOut.Write "<font color ='red'>Errore modificaHypFromPOS: Chiudi Linked "&listaFlink(5,punt)&" Descrizione " & Err.Description&"</font>"&vbCrLf
 		Err.Clear
 	 End If
 	 on error goto 0
@@ -1168,7 +1292,7 @@ Dim objSheet, subb, objRange, objLink
 		On Error Resume Next
         Set objSheet = objWorkbook.Worksheets(lista(7,punt))
 	    If (Err.Number <> 0) Then	
-		    objStdOut.Write "<font color ='red'>modificaHypFrom: Errore setta sheet Linked SuSe "&lista(7,punt)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+		    objStdOut.Write "<font color ='red'>modificaHypFrom: Errore setta sheet Linked SuSe "&lista(7,punt)&" Descrizione " & Err.Description&"</font>"&vbCrLf
 		    'objShell.popup "Errore setta sheet Linked SuSe "&lista(7,punt)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 		    Err.Clear
 	    End If
@@ -1177,7 +1301,7 @@ Dim objSheet, subb, objRange, objLink
 		On Error Resume Next
 	    Set objWorkSecondbook = objExcel.Workbooks.Open(lista(5,punt), False, False)
 	    If (Err.Number <> 0) Then
-		    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: apertura Linked "&lista(5,punt)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+		    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: apertura Linked "&lista(5,punt)&" Descrizione " & Err.Description&"</font>"&vbCrLf
 		    'objShell.popup "Errore modificaHypFrom: apertura Linked "&lista(5,punt)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 		    Err.Clear
 	    End If
@@ -1199,7 +1323,7 @@ Dim objSheet, subb, objRange, objLink
 		On Error Resume Next
         Set objSheet = objWorkSecondbook.Worksheets(lista(7,punt))
 	    If (Err.Number <> 0) Then
-		    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: setta sheet Linked "&lista(7,punt)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+		    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: setta sheet Linked "&lista(7,punt)&" Descrizione " & Err.Description&"</font>"&vbCrLf
 		    'objShell.popup "Errore modificaHypFrom: setta sheet Linked "&lista(7,punt)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 		    Err.Clear
 	    End If
@@ -1229,7 +1353,7 @@ Dim objSheet, subb, objRange, objLink
 		On Error Resume Next
         subb = objSheet.range("'"&lista(7,punt)&"'!"&lista(8,punt)&lista(10,punt)).Hyperlinks(1).SubAddress
 	    If (Err.Number <> 0) Then
-		    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: Copia SubAddress Linked "&lista(7,punt)&"!"&lista(8,punt)&lista(10,punt)&"su:"&lista(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+		    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: Copia SubAddress Linked "&lista(7,punt)&"!"&lista(8,punt)&lista(10,punt)&"su:"&lista(5,y)&" Descrizione " & Err.Description&"</font>"&vbCrLf
 		    'objShell.popup "Errore modificaHypFrom: Copia SubAddress Linked "&lista(7,punt)&"!"&lista(8,punt)&lista(10,punt)&"su:"&lista(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 		    Err.Clear
 	    End If
@@ -1238,10 +1362,13 @@ Dim objSheet, subb, objRange, objLink
 			On Error Resume Next
 	        objSheet.range("'"&lista(7,punt)&"'!"&lista(8,punt)&lista(10,punt)).Hyperlinks(1).SubAddress = "'"&lista(0,punt)&"'!"&lista(3,punt)&lista(1,punt)
 		    If (Err.Number <> 0) Then
-			    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: Modifica SubAddress Linked "&lista(7,punt)&"!"&lista(8,punt)&lista(10,punt)&"su:"&lista(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+			    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: Modifica SubAddress Linked "&lista(7,punt)&"!"&lista(8,punt)&lista(10,punt)&"su:"&lista(5,y)&" Descrizione " & Err.Description&"</font>"&vbCrLf
 			    'objShell.popup "Errore modificaHypFrom: Modifica SubAddress Linked "&lista(7,punt)&"!"&lista(8,punt)&lista(10,punt)&"su:"&lista(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 			    Err.Clear
-		    End If
+			else
+				objStdOut.Write "<font color ='Fuchsia'>modificaHyp da: "&subb&" a: "&lista(0,punt)&"'!"&lista(3,punt)&lista(1,punt)&"</font>"&vbCrLf
+				Uscita = Uscita & "<tr><td colspan=10><font color ='Fuchsia'> modifica Ipertesto da: "&subb&" a: "&lista(0,punt)&"'!"&lista(3,punt)&lista(1,punt)&"</font></td></tr>"
+			End If
 			on error goto 0
         else
 			On Error Resume Next
@@ -1255,7 +1382,7 @@ Dim objSheet, subb, objRange, objLink
 	    objWorkSecondbook.Save
         If (Err.Number <> 0) Then
 			
-		    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: Salva Linked "&lista(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+		    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: Salva Linked "&lista(5,y)&" Descrizione " & Err.Description&"</font>"&vbCrLf
 			
 		    'objShell.popup "Errore modificaHypFrom: Salva Linked "&lista(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 		    Err.Clear
@@ -1265,7 +1392,7 @@ Dim objSheet, subb, objRange, objLink
 	    objWorkSecondbook.Close
         If (Err.Number <> 0) Then
 			
-		    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: Chiudi Linked "&lista(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+		    objStdOut.Write "<font color ='red'>Errore modificaHypFrom: Chiudi Linked "&lista(5,y)&" Descrizione " & Err.Description&"</font>"&vbCrLf
 			
 		    'objShell.popup "Errore modificaHypFrom: Chiudi Linked "&lista(5,y)&" Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 		    Err.Clear
@@ -1278,7 +1405,7 @@ function FindToFrom(ByRef sheet, ByRef lis, ByRef index, ByVal sh_name, ByVal ty
 	'sheet = oggetto, lis Lista su cui registrare, index indice nella lista, sheet_name nome dell0 sheet, typo = 1 = TO 2 = FROM
 	Dim cmt, colLocNum,  rigaLocale, colonnaLocale, rigaLinked, colLinkedNum, colonnaLinked, sheetLinked
 	Dim PosI, PosF, PosC, PosFi, PosSh, PosCo, PosRi, PosPSh, PosPCo, PosPRi, intermedio, temp, chiave
-	Dim fileLinked, fileCompletoLinked, cartellaLinked
+	Dim fileLinked, fileCompletoLinked, cartellaLinked, cartellaRel
     Dim file_completo, pri, pco, psh
 	'HyFlink#TO#Pos=PS=xx#PC=jj#PR=rr#cartella=C:\xxxxxx\yyyyy#file=LivelliAutonomia#S=xx#C=jj#R=rr#HyElink tipo 1
 	'HyFlink#FR#Pos=PS=xx#PC=jj#PR=rr#cartella=C:\xxxxxx\yyyyy#file=LivelliAutonomia#S=xx#C=jj#R=rr#HyElink tipo 2
@@ -1349,6 +1476,17 @@ function FindToFrom(ByRef sheet, ByRef lis, ByRef index, ByVal sh_name, ByVal ty
 					if (PosC > 0) then
 						intermedio = Mid(cmt.text,PosC+10,Len(cmt.text)-(PosC+10))
 						cartellaLinked = Mid(intermedio,1,Instr(1,intermedio,"#",1)-1) 'estrae dal link il nome della cartellaLinked
+                        'controllo se indirizzamento relativo e converto
+                        if (InStr(1,cartellaLinked,"..") > 0) then
+                            cartellaRel = cartellaLinked
+                            cartellaLinked = creaPathCompleto(cartellaRel,folderMaster)
+                        else
+                            if (strComp(cartellaLinked,".") = 0) then
+                                'la cartella è relativa ed è quella di folderMaster
+                                cartellaRel = cartellaLinked
+                                cartellaLinked = creaPathCompleto(cartellaRel,folderMaster)
+                            end if
+                        end if
 					else
 						On Error Resume Next
 						objStdOut.Write "<font color ='red'>Attenzione HyFlink senza cartella"&cmt.text&"</font>"&vbCrLf
@@ -1406,7 +1544,7 @@ function FindToFrom(ByRef sheet, ByRef lis, ByRef index, ByVal sh_name, ByVal ty
 						On Error Resume Next
 						fileCompletoLinked = cercaFile(fileLinked, cartellaLinked , fso)
 						If (Err.Number <> 0) Then
-								objStdOut.Write "<font color ='red'>Errore cercaFile Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096&"</font>"&vbCrLf
+								objStdOut.Write "<font color ='red'>Errore cercaFile Descrizione " & Err.Description&"</font>"&vbCrLf
 								'objShell.popup "Errore Errore cercaFile Descrizione " & Err.Description , AttesaMessaggioLLL, "Errore", CRITICAL_ICON + 4096
 								Err.Clear
 						end If
@@ -1417,7 +1555,6 @@ function FindToFrom(ByRef sheet, ByRef lis, ByRef index, ByVal sh_name, ByVal ty
 						On Error Resume Next
 						objStdOut.Write "<font color ='red'>Attenzione DIR-NON-VALIDA: " & cartellaLinked&" Link:"&cmt.text&" da:"&cmt.Parent.Address(0, 0)&"</font>"&vbCrLf
 						on error goto 0
-						'objShell.popup "Attenzione " & "DIR-NON-VALIDA: " & cartellaLinked&" Link:"&cmt.text&" da:"&cmt.Parent.Address(0, 0), AttesaMessaggio, "errore", CRITICAL_ICON + 4096
 						Uscita = Uscita & "<tr><td colspan=10><font color=red> Attenzione la cartella "&cartellaLinked&" Link:"&cmt.text&" da:"&cmt.Parent.Address(0, 0)&" non esiste</font></td></tr>"
 					end If
 				end if
@@ -1425,7 +1562,7 @@ function FindToFrom(ByRef sheet, ByRef lis, ByRef index, ByVal sh_name, ByVal ty
 				lis(1,index) = rigaLocale
 				lis(2,index) = colLocNum
 				lis(3,index) = colonnaLocale
-				lis(4,index) = cartellaLinked
+				lis(4,index) = cartellaRel
 				lis(5,index) = file_completo
 				lis(6,index) = sheetLinked &"!"& colonnaLinked & rigaLinked
 				lis(7,index) = sheetLinked 'devo usare il nome
@@ -1597,10 +1734,15 @@ else
     if (Pos <> 0) then
         temp = Mid(address,Pos+1,Len(address)-Pos)
     else
-        on error resume next
-        objStdOut.Write "<font color ='red'>Attenzione Indirizzo del hyperlink non secondo standard : "&address&"</font>"&vbCrlf
-        objStdOut.Write "<font color ='orange'>uscita dal programma per errore</font>"&vbCrlf
-        Wscript.Quit 777
+        if (InStr(1,address,fileMaster) > 0) then
+            estraiParteIniziale = "LinkSuSeStesso"
+            exit function
+        else
+            on error resume next
+            objStdOut.Write "<font color ='red'>Attenzione Indirizzo del hyperlink non secondo standard : "&address&"</font>"&vbCrlf
+            objStdOut.Write "<font color ='orange'>uscita dal programma per errore</font>"&vbCrlf
+            Wscript.Quit 777
+        end if
     end if
     Pos = Instr(1,temp,"'")
     if (Pos > 0) then 'se non c'è l'apice mantengo tutto il nome del file
@@ -1644,7 +1786,7 @@ function outListe()
 		out = out & "1)  Riga locale                :" & listaFlink(1,y)  & vbCrLf
 		out = out & "2)  Colonna num                :" & listaFlink(2,y)  & vbCrLf
 		out = out & "3)  Colonna lett               :" & listaFlink(3,y)  & vbCrLf
-		out = out & "4)  Cartella Link              :" & listaFlink(4,y)  & vbCrLf
+		out = out & "4)  Cartella Link (rel)        :" & listaFlink(4,y)  & vbCrLf
 		out = out & "5)  File link comp             :" & listaFlink(5,y)  & vbCrLf
 		out = out & "6)  sim subAddress             :" & listaFlink(6,y)  & vbCrLf
 		out = out & "7)  Sheet name link            :" & listaFlink(7,y)  & vbCrLf
@@ -1667,7 +1809,7 @@ function outListe()
 		out = out & "1)  Riga locale                :" & listaLinkedFlink(1,y)  & vbCrLf
 		out = out & "2)  Colonna num                :" & listaLinkedFlink(2,y)  & vbCrLf
 		out = out & "3)  Colonna lett               :" & listaLinkedFlink(3,y)  & vbCrLf
-		out = out & "4)  Cartella Link              :" & listaLinkedFlink(4,y)  & vbCrLf
+		out = out & "4)  Cartella Link  (rel)       :" & listaLinkedFlink(4,y)  & vbCrLf
 		out = out & "5)  File link comp             :" & listaLinkedFlink(5,y)  & vbCrLf
 		out = out & "6)  sim subAddress             :" & listaLinkedFlink(6,y)  & vbCrLf
 		out = out & "7)  Sheet name link            :" & listaLinkedFlink(7,y)  & vbCrLf
@@ -1708,18 +1850,26 @@ Dim i, id_n, piece, out, p, temp
 		out = piece(0)
 		for i = 1 to (id_n - 1)
 			out = out & "\" & piece(i)
-		next
+		next 
         p = Instr(1,address,"\")
+        if (p <= 0) then
+            p = Instr(1,address,"/")
+        end if
         temp = Mid(address,p,Len(address)-(p-1))
         out = out & temp
 	else
+        
         if ((Instr(1,address,":\") > 0) or (Instr(1,address,"\\") > 0)) then
             out = address
         else
-		    out = master & "\" & address
+            if (strComp(address,".") = 0) then
+                out = master
+            else
+		        out = master & "\" & address
+            end if
         end if
 	end if
-	creaPathCompleto = out
+	creaPathCompleto = replace(out,"/","\")
 end function
 
 Function leggiINI(ByRef folderOutput, ByRef fileOutput, ByRef repOutput, ByRef debug, ByRef settaFont, ByRef dimFont)
@@ -1909,6 +2059,10 @@ Dim Pos,out,piece,id_n,i, temp, temp2, sotto_dir
 		estraiFolderDaAddress = "LinkSuSeStesso"
 		exit function
 	end if
+    if (strComp(iniz,"LinkSuSeStesso") = 0) then
+        estraiFolderDaAddress = "LinkSuSeStesso"
+		exit function
+    end if
     if ((Instr(1,add,":\") > 0) or (Instr(1,add,"\\") > 0)) then
         'dir completa
         Pos = Instr(1,add,iniz)
@@ -1970,15 +2124,201 @@ Dim objFileToWrite
 
 End Function
 
+Function newFlinkHypLink(objSheet, lis, idx, p_sh, p_cn, p_c, p_r)
+Dim cartella, file, commento, comm, objCommento
+
+    if (InStrRev(lis(4,idx),"..") > 0) then
+        'Relativo
+        cartella = lis(4,idx)
+        if (InStrRev(lis(4,idx),".xls") > 0) then
+            cartella = Mid(cartella,1,InStrRev(cartella,"\")-1)
+        end if
+    else
+        if (InStrRev(lis(4,idx),"\") = 0) then
+           cartella = Mid(lis(4,idx),1,InStrRev(lis(4,idx),"/")-1)
+        else
+	       cartella = Mid(lis(4,idx),1,InStrRev(lis(4,idx),"\")-1)
+        end if
+    end if
+	On Error Resume Next
+    Set objSheet = objWorkbook.Worksheets(lis(0,idx)) 'mi setto sul giusto sheet
+    If (Err.Number <> 0) Then
+		objStdOut.Write "<font color ='red'>Errore select sheet newFlinkHypLink:" & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
+		Err.Clear
+	End If
+	on error goto 0
+    '                  (riga,col)
+	'objSheet.Cells(lis(1,idx), lis(2,idx)).ClearComments
+	On Error Resume Next
+    comm = objSheet.Cells(lis(1,idx), lis(2,idx)).Comment.Text
+	If (Err.Number <> 0) Then
+		objStdOut.Write "<font color ='red'>Errore clear comment newFlinkHypLink:" & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
+		Err.Clear
+	End If
+	on error goto 0
+    if (Instr(1,comm,"HyFlink#") > 0) then 'c'è già un link devo toglierlo
+        'rimuovo il link
+        commento = rimuoviLink(comm)
+	else
+		commento = comm
+    end if
+	commento = commento & vbCrLf&"HyFlink#TO#Pos=PS="&lis(0,idx)&"#PC="&lis(3,idx)&"#PR="&lis(1,idx)&"#cartella="&cartella&"#file="&lis(11,idx)&"#S="&p_sh&"#C="&p_c&"#R="&p_r&"#HyElink"
+	commento = commento & vbCrLf&"FcomTime#"&Date&" "&Hour(Now())&":"&Minute(Now())&":"&Second(Now())&"#FcomTime"
+	On Error Resume Next
+    objSheet.Cells(lis(1,idx), lis(2,idx)).ClearComments
+    If (Err.Number <> 0) Then
+		objStdOut.Write "<font color ='red'>Errore clear comment newFlinkHypLink:" & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
+		Err.Clear
+	End If
+	on error goto 0
+	On Error Resume Next
+	objSheet.Cells(lis(1,idx), lis(2,idx)).AddComment commento
+	If (Err.Number <> 0) Then
+		objStdOut.Write "<font color ='red'>Errore add comment newFlinkHypLink:" & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
+		Err.Clear
+	End If
+	on error goto 0
+	newFlinkHypLink = true
+end function
+
+
+
+Function modificaLinkTo(objSheet, idx, chiave)
+'modificaLinkTo(objWorksheet, y, Controparte, "XL")
+Dim cartella, file, commento, comm, objCommento
+
+    if (StrComp(listaFlink(5,idx),"LinkSuSeStesso") = 0) then
+        cartella = "LinkSuSeStesso"
+        chiave = "XL" 'Il controllo viene fatto soltanto sulla seconda lettera che sia TL o FL fa poca differenza
+    else
+        if (InStrRev(listaFlink(4,idx),"..") > 0) then
+            'Relativo
+            cartella = listaFlink(4,idx)
+            if (InStrRev(listaFlink(4,idx),".xls") > 0) then
+                cartella = Mid(cartella,1,InStrRev(cartella,"\")-1)
+            end if
+        else
+            if (InStrRev(listaFlink(4,idx),"\") = 0) then
+               cartella = Mid(listaFlink(4,idx),1,InStrRev(listaFlink(4,idx),"/")-1)
+            else
+	           cartella = Mid(llistaFlink(4,idx),1,InStrRev(listaFlink(4,idx),"\")-1)
+            end if
+        end if
+    end if
+	On Error Resume Next
+    Set objSheet = objWorkbook.Worksheets(listaFlink(0,idx)) 'mi setto sul giusto sheet
+    If (Err.Number <> 0) Then
+		objStdOut.Write "<font color ='red'>Errore select sheet modificaLinkTo:" & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
+		Err.Clear
+	End If
+	on error goto 0
+    '                  (riga,col)
+	'objSheet.Cells(lis(1,idx), lis(2,idx)).ClearComments
+	On Error Resume Next
+    comm = objSheet.Cells(listaFlink(1,idx), listaFlink(2,idx)).Comment.Text
+	If (Err.Number <> 0) Then
+		objStdOut.Write "<font color ='red'>Errore clear comment modificaLinkTo:" & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
+		Err.Clear
+	End If
+	on error goto 0
+    if (Instr(1,comm,"HyFlink#") > 0) then 'c'è già un link devo toglierlo
+        'rimuovo il link
+        commento = rimuoviLink(comm)
+	else
+		commento = comm
+    end if
+	if (StrComp(listaFlink(5,idx),"LinkSuSeStesso") = 0) then
+		'HyFlink#XL#Pos=S=xx#C=jj#R=rr#Punt=S=xx#C=jj#R=rr#HyElink
+		commento = commento & vbCrLf&"HyFlink#"&chiave&"#Pos=PS="&listaFlink(0,idx)&"#PC="&listaFlink(3,idx)&"#PR="&listaFlink(1,idx)&"#Punt=S="&listaFlink(7,idx)&"#C="&listaFlink(8,idx)&"#R="&listaFlink(10,idx)&"#HyElink"
+	else
+		commento = commento & vbCrLf&"HyFlink#"&chiave&"#Pos=PS="&listaFlink(0,idx)&"#PC="&listaFlink(3,idx)&"#PR="&listaFlink(1,idx)&"#cartella="&cartella&"#file="&listaFlink(11,idx)&"#S="&listaFlink(7,idx)&"#C="&listaFlink(8,idx)&"#R="&listaFlink(10,idx)&"#HyElink"
+	end if
+	commento = commento & vbCrLf&"FcomTime#"&Date&" "&Hour(Now())&":"&Minute(Now())&":"&Second(Now())&"#FcomTime"
+	On Error Resume Next
+    objSheet.Cells(listaFlink(1,idx), listaFlink(2,idx)).ClearComments
+    If (Err.Number <> 0) Then
+		objStdOut.Write "<font color ='red'>Errore clear comment modificaLinkTo:" & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
+		Err.Clear
+	End If
+	on error goto 0
+	On Error Resume Next
+	objSheet.Cells(listaFlink(1,idx), listaFlink(2,idx)).AddComment commento
+	If (Err.Number <> 0) Then
+		objStdOut.Write "<font color ='red'>Errore add comment modificaLinkTo:" & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
+		Err.Clear
+	End If
+	on error goto 0
+	modificaLinkTo = true
+end function
+
+
+
+Function modificaLinkToLocal(objSheet, idx, Rsh, Rco, Rri)
+'modificaLinkToLocal(objWorksheet, y, Controparte)
+Dim cartella, file, commento, comm, objCommento
+	On Error Resume Next
+    Set objSheet = objWorkbook.Worksheets(listaFlink(0,idx)) 'mi setto sul giusto sheet
+    If (Err.Number <> 0) Then
+		objStdOut.Write "<font color ='red'>Errore select sheet modificaLinkToLocal:" & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
+		Err.Clear
+	End If
+	on error goto 0
+    '                  (riga,col)
+	'objSheet.Cells(lis(1,idx), lis(2,idx)).ClearComments
+	On Error Resume Next
+    comm = objSheet.Cells(listaFlink(1,idx), listaFlink(2,idx)).Comment.Text
+	If (Err.Number <> 0) Then
+		objStdOut.Write "<font color ='red'>Errore clear comment modificaLinkToLocal:" & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
+		Err.Clear
+	End If
+	on error goto 0
+    if (Instr(1,comm,"HyFlink#") > 0) then 'c'è già un link devo toglierlo
+        'rimuovo il link
+        commento = rimuoviLink(comm)
+	else
+		commento = comm
+    end if
+	'HyFlink#XL#Pos=S=xx#C=jj#R=rr#Punt=S=xx#C=jj#R=rr#HyElink
+	commento = commento & vbCrLf&"HyFlink#XL#Pos=PS="&listaFlink(0,idx)&"#PC="&listaFlink(3,idx)&"#PR="&listaFlink(1,idx)&"#Punt=S="&Rsh&"#C="&Rco&"#R="&Rri&"#HyElink"
+	commento = commento & vbCrLf&"FcomTime#"&Date&" "&Hour(Now())&":"&Minute(Now())&":"&Second(Now())&"#FcomTime"
+	On Error Resume Next
+    objSheet.Cells(listaFlink(1,idx), listaFlink(2,idx)).ClearComments
+    If (Err.Number <> 0) Then
+		objStdOut.Write "<font color ='red'>Errore clear comment modificaLinkToLocal:" & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
+		Err.Clear
+	End If
+	on error goto 0
+	On Error Resume Next
+	objSheet.Cells(listaFlink(1,idx), listaFlink(2,idx)).AddComment commento
+	If (Err.Number <> 0) Then
+		objStdOut.Write "<font color ='red'>Errore add comment modificaLinkToLocal:" & Err.Number & " Description " & Err.Description&"</font>"&vbCrLf
+		Err.Clear
+	End If
+	on error goto 0
+	modificaLinkToLocal = true
+end function
+
+
 Function scriviLinkTo(objSheet, lis, idx, chiave)
 Dim cartella, file, commento, comm, objCommento
-'On Error Resume Next
-'DAFARE Devo poi vedere di accodarmi ad un commento
+
     if (StrComp(lis(5,idx),"LinkSuSeStesso") = 0) then
         cartella = "LinkSuSeStesso"
         chiave = "XL" 'Il controllo viene fatto soltanto sulla seconda lettera che sia TL o FL fa poca differenza
     else
-	    cartella = Mid(lis(5,idx),1,InStrRev(lis(5,idx),"\")-1)
+        if (InStrRev(lis(4,idx),"..") > 0) then
+            'Relativo
+            cartella = lis(4,idx)
+            if (InStrRev(lis(4,idx),".xls") > 0) then
+                cartella = Mid(cartella,1,InStrRev(cartella,"\")-1)
+            end if
+        else
+            if (InStrRev(lis(4,idx),"\") = 0) then
+               cartella = Mid(lis(4,idx),1,InStrRev(lis(4,idx),"/")-1)
+            else
+	           cartella = Mid(lis(4,idx),1,InStrRev(lis(4,idx),"\")-1)
+            end if
+        end if
     end if
 	On Error Resume Next
     Set objSheet = objWorkbook.Worksheets(lis(0,idx)) 'mi setto sul giusto sheet
