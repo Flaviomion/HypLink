@@ -38,3 +38,4 @@ Third: launch the script, it's look on .ini and read the excel files and create 
 
 When you have performed these steps in case of modification of the files, you can re-execute the script and it will restore the hyperlinks that may have broken.
 
+At last I create a Visual Basic version (hyplink.vb) of HypLink to have an executable of the script.
